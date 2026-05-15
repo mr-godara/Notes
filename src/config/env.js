@@ -14,6 +14,7 @@ const env = {
   nodeEnv: process.env.NODE_ENV || 'development',
   port: Number(process.env.PORT) || 5000,
   databaseUrl: process.env.DATABASE_URL,
+  databaseSsl: process.env.DATABASE_SSL,
   jwtSecret: process.env.JWT_SECRET,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '24h',
   bcryptSaltRounds: Number(process.env.BCRYPT_SALT_ROUNDS) || 10,

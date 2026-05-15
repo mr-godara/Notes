@@ -49,6 +49,7 @@ Copy `.env.example` to `.env` and set values for your environment.
 NODE_ENV=development
 PORT=5000
 DATABASE_URL=postgresql://notes_user:notes_password@localhost:5432/notes_db
+DATABASE_SSL=false
 JWT_SECRET=replace-with-a-long-random-secret
 JWT_EXPIRES_IN=24h
 BCRYPT_SALT_ROUNDS=10
@@ -56,7 +57,7 @@ CORS_ORIGIN=*
 API_BASE_URL=http://localhost:5000
 ```
 
-`DATABASE_URL` is the only database configuration needed locally and on Render. In production, the app automatically enables PostgreSQL SSL with `rejectUnauthorized: false`, which is required for Render PostgreSQL.
+`DATABASE_URL` is the primary database configuration locally and on Render. In production, the app automatically enables PostgreSQL SSL with `rejectUnauthorized: false`, which is required for Render PostgreSQL. If you connect to a hosted PostgreSQL database from local development and it requires SSL, set `DATABASE_SSL=true`.
 
 ## Local Development
 
@@ -293,6 +294,7 @@ Start Command: npm start
 NODE_ENV=production
 PORT=10000
 DATABASE_URL=your_render_postgres_database_url
+DATABASE_SSL=true
 JWT_SECRET=your_long_random_production_secret
 JWT_EXPIRES_IN=24h
 BCRYPT_SALT_ROUNDS=10

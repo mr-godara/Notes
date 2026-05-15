@@ -1,0 +1,12 @@
+{
+  "watch": [
+    "app.js",
+    "server.js",
+    "src"
+  ],
+  "ext": "js,json",
+  "ignore": [
+    "openapi.json",
+    "node_modules"
+  ]
+}
