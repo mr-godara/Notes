@@ -1,6 +1,45 @@
 # Notes API
 
-A production-ready backend REST API for a multi-user Notes application similar to Google Keep or Apple Notes. It supports user registration, JWT login, private notes, shared notes, note pinning, full text search, Swagger documentation, Docker, and Render PostgreSQL deployment.
+A production-ready REST API for a multi-user Notes application similar to Google Keep, Apple Notes, and Notion. The backend supports authentication, private notes, shared notes, note pinning, search, pagination, Swagger/OpenAPI documentation, Docker, and Render PostgreSQL deployment.
+
+## Live Links
+
+Backend API base URL:
+
+```text
+https://notes-v7q9.onrender.com
+```
+
+Swagger API documentation:
+
+```text
+https://notes-v7q9.onrender.com/api-docs
+```
+
+Raw OpenAPI JSON:
+
+```text
+https://notes-v7q9.onrender.com/openapi.json
+```
+
+Frontend application:
+
+```text
+https://notes-khaki-beta.vercel.app
+```
+
+```
+
+Automated API tests should suffix paths to the backend base URL, for example:
+
+```text
+https://notes-v7q9.onrender.com/about
+https://notes-v7q9.onrender.com/login
+https://notes-v7q9.onrender.com/register
+https://notes-v7q9.onrender.com/notes
+```
+
+Important: `/login`, `/register`, `/notes`, and other write endpoints must be called with their documented HTTP methods. Opening `https://notes-v7q9.onrender.com/login` in a browser sends `GET /login`, which is not a defined route. Login is `POST /login`.
 
 ## Tech Stack
 
@@ -15,6 +54,23 @@ A production-ready backend REST API for a multi-user Notes application similar t
 - CORS
 - Swagger/OpenAPI
 - Docker and Docker Compose
+- Render PostgreSQL
+
+## Features
+
+- User registration and login
+- JWT bearer authentication
+- Protected notes routes
+- Owner-only update, delete, share, and pin operations
+- Owner-or-shared-user read access
+- Paginated notes listing
+- Pinned notes ordered first
+- Case-insensitive title and content search
+- Note sharing by recipient email
+- Consistent JSON error responses
+- Auto-created PostgreSQL tables on startup
+- Swagger UI with bearer token authorization support
+- Render-ready PostgreSQL SSL configuration
 
 ## Folder Structure
 
@@ -28,6 +84,7 @@ A production-ready backend REST API for a multi-user Notes application similar t
 |-- package.json
 |-- README.md
 |-- .env.example
+|-- frontend/
 `-- src
     |-- config
     |-- controllers
@@ -45,7 +102,7 @@ A production-ready backend REST API for a multi-user Notes application similar t
 
 Copy `.env.example` to `.env` and set values for your environment.
 
-```bash
+```env
 NODE_ENV=development
 PORT=5000
 DATABASE_URL=postgresql://notes_user:notes_password@localhost:5432/notes_db
@@ -57,35 +114,63 @@ CORS_ORIGIN=*
 API_BASE_URL=http://localhost:5000
 ```
 
-`DATABASE_URL` is the primary database configuration locally and on Render. In production, the app automatically enables PostgreSQL SSL with `rejectUnauthorized: false`, which is required for Render PostgreSQL. If you connect to a hosted PostgreSQL database from local development and it requires SSL, set `DATABASE_SSL=true`.
+
 
 ## Local Development
 
-1. Install dependencies.
+Install dependencies:
 
 ```bash
 npm install
 ```
 
-2. Create `.env`.
+Create `.env`:
 
 ```bash
 cp .env.example .env
 ```
 
-3. Start PostgreSQL locally and ensure `DATABASE_URL` points to it.
-
-4. Start the API.
+Start the backend:
 
 ```bash
 npm run dev
 ```
 
-The server starts on `http://localhost:5000` by default. Tables are created automatically on startup:
+The API runs at:
+
+```text
+http://localhost:5000
+```
+
+Tables are created automatically on startup:
 
 - `users`
 - `notes`
 - `note_shares`
+
+## Frontend Setup
+
+The React frontend lives in `frontend/`.
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend local URL:
+
+```text
+http://localhost:5173
+```
+
+Frontend environment variable:
+
+```env
+VITE_API_BASE_URL=http://localhost:5000
+```
+
+
 
 ## Docker Setup
 
@@ -101,7 +186,13 @@ The API will be available at:
 http://localhost:5000
 ```
 
-The Docker Compose PostgreSQL connection string is:
+Docker Compose publishes PostgreSQL on host port `5433` to avoid conflicts with local PostgreSQL:
+
+```text
+localhost:5433 -> postgres:5432
+```
+
+The app container uses Docker internal networking:
 
 ```text
 postgresql://notes_user:notes_password@postgres:5432/notes_db
@@ -109,16 +200,28 @@ postgresql://notes_user:notes_password@postgres:5432/notes_db
 
 ## Swagger Usage
 
-Swagger UI is available at:
+Local Swagger UI:
 
 ```text
-GET /api-docs
+http://localhost:5000/api-docs
 ```
 
-Raw OpenAPI JSON is available at:
+Production Swagger UI:
 
 ```text
-GET /openapi.json
+https://notes-v7q9.onrender.com/api-docs
+```
+
+Local OpenAPI JSON:
+
+```text
+http://localhost:5000/openapi.json
+```
+
+Production OpenAPI JSON:
+
+```text
+https://notes-v7q9.onrender.com/openapi.json
 ```
 
 Swagger UI supports JWT bearer authentication. After calling `/login`, click **Authorize** and enter:
@@ -127,7 +230,7 @@ Swagger UI supports JWT bearer authentication. After calling `/login`, click **A
 Bearer your_jwt_token
 ```
 
-The OpenAPI document is generated from `src/config/swagger.js` and route JSDoc comments. To regenerate the checked-in `openapi.json` file manually:
+Regenerate `openapi.json` from route JSDoc comments:
 
 ```bash
 npm run generate:openapi
@@ -135,38 +238,54 @@ npm run generate:openapi
 
 ## API Endpoints
 
-### Health
+| Method | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| `GET` | `/` | No | Health check |
+| `GET` | `/about` | No | Project and feature metadata |
+| `POST` | `/register` | No | Register a user |
+| `POST` | `/login` | No | Login and receive JWT |
+| `GET` | `/notes?page=1&limit=10` | Yes | List owned and shared notes |
+| `GET` | `/notes/:id` | Yes | Get one accessible note |
+| `POST` | `/notes` | Yes | Create note |
+| `PUT` | `/notes/:id` | Yes | Update note, owner only |
+| `DELETE` | `/notes/:id` | Yes | Delete note, owner only |
+| `POST` | `/notes/:id/share` | Yes | Share note by email, owner only |
+| `PATCH` | `/notes/:id/pin` | Yes | Toggle pin state, owner only |
+| `GET` | `/search?q=keyword` | Yes | Search accessible notes |
+| `GET` | `/api-docs` | No | Swagger UI |
+| `GET` | `/openapi.json` | No | Raw OpenAPI JSON |
 
-```http
-GET /
-```
+## API Examples
 
-Response:
-
-```json
-{
-  "status": "ok",
-  "message": "Notes API running"
-}
-```
-
-### Register
+Health:
 
 ```bash
-curl -X POST http://localhost:5000/register \
+curl https://notes-v7q9.onrender.com/
+```
+
+About:
+
+```bash
+curl https://notes-v7q9.onrender.com/about
+```
+
+Register:
+
+```bash
+curl -X POST https://notes-v7q9.onrender.com/register \
   -H "Content-Type: application/json" \
   -d "{\"email\":\"user@example.com\",\"password\":\"secret123\"}"
 ```
 
-### Login
+Login:
 
 ```bash
-curl -X POST http://localhost:5000/login \
+curl -X POST https://notes-v7q9.onrender.com/login \
   -H "Content-Type: application/json" \
   -d "{\"email\":\"user@example.com\",\"password\":\"secret123\"}"
 ```
 
-Response:
+Login response:
 
 ```json
 {
@@ -174,150 +293,80 @@ Response:
 }
 ```
 
-### Create Note
+Create note:
 
 ```bash
-curl -X POST http://localhost:5000/notes \
+curl -X POST https://notes-v7q9.onrender.com/notes \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer jwt_token" \
   -d "{\"title\":\"Meeting notes\",\"content\":\"Discuss launch checklist.\"}"
 ```
 
-### List Notes
+List notes:
 
 ```bash
-curl "http://localhost:5000/notes?page=1&limit=10" \
+curl "https://notes-v7q9.onrender.com/notes?page=1&limit=10" \
   -H "Authorization: Bearer jwt_token"
 ```
 
-Notes owned by the user and notes shared with the user are returned. Pinned notes appear first, then latest updated notes.
-
-### Get Note
+Get note:
 
 ```bash
-curl http://localhost:5000/notes/{note_id} \
+curl https://notes-v7q9.onrender.com/notes/{note_id} \
   -H "Authorization: Bearer jwt_token"
 ```
 
-### Update Note
+Update note:
 
 ```bash
-curl -X PUT http://localhost:5000/notes/{note_id} \
+curl -X PUT https://notes-v7q9.onrender.com/notes/{note_id} \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer jwt_token" \
   -d "{\"title\":\"Updated title\",\"content\":\"Updated content.\"}"
 ```
 
-Only note owners can update notes.
-
-### Delete Note
+Delete note:
 
 ```bash
-curl -X DELETE http://localhost:5000/notes/{note_id} \
+curl -X DELETE https://notes-v7q9.onrender.com/notes/{note_id} \
   -H "Authorization: Bearer jwt_token"
 ```
 
-Only note owners can delete notes.
-
-### Share Note
+Share note:
 
 ```bash
-curl -X POST http://localhost:5000/notes/{note_id}/share \
+curl -X POST https://notes-v7q9.onrender.com/notes/{note_id}/share \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer jwt_token" \
   -d "{\"share_with_email\":\"teammate@example.com\"}"
 ```
 
-Only note owners can share notes. A note cannot be shared with the owner, with a missing user, or with the same user twice.
-
-### Toggle Pin
+Toggle pin:
 
 ```bash
-curl -X PATCH http://localhost:5000/notes/{note_id}/pin \
+curl -X PATCH https://notes-v7q9.onrender.com/notes/{note_id}/pin \
   -H "Authorization: Bearer jwt_token"
 ```
 
-Only note owners can pin or unpin notes.
-
-### Search
+Search:
 
 ```bash
-curl "http://localhost:5000/search?q=launch" \
+curl "https://notes-v7q9.onrender.com/search?q=launch" \
   -H "Authorization: Bearer jwt_token"
 ```
 
-Search is case-insensitive and only returns notes the authenticated user can access.
+## Access Rules
 
-### About
-
-```bash
-curl http://localhost:5000/about
-```
-
-Response:
-
-```json
-{
-  "name": "Amit Godara",
-  "email": "your-email@example.com",
-  "my_features": {
-    "note_pinning": "Allows users to pin important notes for quick access."
-  }
-}
-```
-
-## Render.com Deployment
-
-1. Push this project to GitHub.
-
-2. Create a new PostgreSQL database on Render.
-
-3. Copy the database internal connection string from Render. It will look like:
-
-```text
-postgresql://user:password@host:5432/dbname
-```
-
-4. Create a new Render Web Service from the GitHub repository.
-
-5. Use these settings:
-
-```text
-Environment: Node
-Build Command: npm install
-Start Command: npm start
-```
-
-6. Add environment variables in Render:
-
-```text
-NODE_ENV=production
-PORT=10000
-DATABASE_URL=your_render_postgres_database_url
-DATABASE_SSL=true
-JWT_SECRET=your_long_random_production_secret
-JWT_EXPIRES_IN=24h
-BCRYPT_SALT_ROUNDS=10
-CORS_ORIGIN=https://your-frontend-domain.com
-API_BASE_URL=https://your-render-service.onrender.com
-```
-
-Render provides `PORT` automatically. The server uses `process.env.PORT || 5000`, so no code changes are required.
-
-7. Deploy. On first startup, the app creates all database tables automatically.
-
-## Security Notes
-
-- Passwords are hashed with bcrypt using salt rounds from `BCRYPT_SALT_ROUNDS`, defaulting to `10`.
-- JWT payload contains only `userId`.
-- All `/notes` and `/search` routes require a bearer token.
-- SQL queries use parameterized `pg` calls.
-- Stack traces are never exposed in API responses.
-- Helmet and CORS are enabled globally.
+- Register and login are public.
+- `/notes` routes require JWT bearer auth.
+- `/search` requires JWT bearer auth.
+- Note owners can read, update, delete, share, pin, and unpin their notes.
+- Shared users can read notes shared with them.
+- Shared users cannot update, delete, share, pin, or unpin notes they do not own.
 
 ## Error Format
 
-Errors use a consistent JSON shape:
+Validation error:
 
 ```json
 {
@@ -326,10 +375,39 @@ Errors use a consistent JSON shape:
 }
 ```
 
-For non-validation errors:
+Authentication error:
 
 ```json
 {
   "message": "Invalid email or password"
 }
 ```
+
+Forbidden error:
+
+```json
+{
+  "message": "You are not allowed to perform this action"
+}
+```
+
+Not found error:
+
+```json
+{
+  "message": "Note not found"
+}
+```
+
+
+
+## Security Notes
+
+- Passwords are hashed with bcrypt.
+- JWT payload contains only `userId`.
+- JWT expiry is 24 hours by default.
+- SQL queries use parameterized `pg` calls.
+- Stack traces are not exposed in API responses.
+- Helmet and CORS are enabled globally.
+- Secrets are loaded from environment variables.
+- `.env` is ignored by Git.
