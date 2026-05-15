@@ -1,0 +1,1086 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Notes API",
+    "version": "1.0.0",
+    "description": "A production-ready REST API for a multi-user notes application with authentication, sharing, pinning, search, and PostgreSQL persistence.",
+    "contact": {
+      "name": "Amit Godara",
+      "email": "your-email@example.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000",
+      "description": "Local development server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Health",
+      "description": "Service health endpoints"
+    },
+    {
+      "name": "Auth",
+      "description": "User registration and login"
+    },
+    {
+      "name": "Notes",
+      "description": "Create, read, update, delete, share, and pin notes"
+    },
+    {
+      "name": "Search",
+      "description": "Full text note search"
+    },
+    {
+      "name": "About",
+      "description": "Project metadata"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "RegisterRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "user@example.com"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 6,
+            "example": "secret123"
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "user@example.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "secret123"
+          }
+        }
+      },
+      "LoginResponse": {
+        "type": "object",
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          }
+        }
+      },
+      "NoteCreateRequest": {
+        "type": "object",
+        "required": [
+          "title",
+          "content"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Meeting notes"
+          },
+          "content": {
+            "type": "string",
+            "example": "Discuss launch checklist and owner assignments."
+          }
+        }
+      },
+      "NoteUpdateRequest": {
+        "type": "object",
+        "minProperties": 1,
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Updated meeting notes"
+          },
+          "content": {
+            "type": "string",
+            "example": "Updated content."
+          }
+        }
+      },
+      "ShareNoteRequest": {
+        "type": "object",
+        "required": [
+          "share_with_email"
+        ],
+        "properties": {
+          "share_with_email": {
+            "type": "string",
+            "format": "email",
+            "example": "teammate@example.com"
+          }
+        }
+      },
+      "Note": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "c1d3c0d9-0f44-45e5-9ab7-c1b5cce74db5"
+          },
+          "owner_id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "45431751-9584-4de4-8d89-58f22fc5291a"
+          },
+          "title": {
+            "type": "string",
+            "example": "Meeting notes"
+          },
+          "content": {
+            "type": "string",
+            "example": "Discuss launch checklist and owner assignments."
+          },
+          "is_pinned": {
+            "type": "boolean",
+            "example": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PaginatedNotesResponse": {
+        "type": "object",
+        "properties": {
+          "notes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Note"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "example": 100
+          },
+          "page": {
+            "type": "integer",
+            "example": 1
+          },
+          "limit": {
+            "type": "integer",
+            "example": 10
+          },
+          "totalPages": {
+            "type": "integer",
+            "example": 10
+          }
+        }
+      },
+      "MessageResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "User registered successfully"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "Validation failed"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "email must be a valid email"
+            ]
+          }
+        }
+      },
+      "AboutResponse": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Amit Godara"
+          },
+          "email": {
+            "type": "string",
+            "example": "your-email@example.com"
+          },
+          "my_features": {
+            "type": "object",
+            "properties": {
+              "note_pinning": {
+                "type": "string",
+                "example": "Allows users to pin important notes for quick access."
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/about": {
+      "get": {
+        "summary": "About this API",
+        "description": "Returns project owner information and custom feature details.",
+        "tags": [
+          "About"
+        ],
+        "responses": {
+          "200": {
+            "description": "About metadata.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AboutResponse"
+                },
+                "examples": {
+                  "about": {
+                    "value": {
+                      "name": "Amit Godara",
+                      "email": "your-email@example.com",
+                      "my_features": {
+                        "note_pinning": "Allows users to pin important notes for quick access."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/register": {
+      "post": {
+        "summary": "Register a new user",
+        "description": "Creates a user account with a unique email and a bcrypt hashed password.",
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              },
+              "examples": {
+                "valid": {
+                  "value": {
+                    "email": "user@example.com",
+                    "password": "secret123"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User registered successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                },
+                "examples": {
+                  "success": {
+                    "value": {
+                      "message": "User registered successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid payload.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Email already exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "duplicate": {
+                    "value": {
+                      "message": "Email already exists"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/login": {
+      "post": {
+        "summary": "Login",
+        "description": "Authenticates a user and returns a JWT access token valid for 24 hours.",
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              },
+              "examples": {
+                "valid": {
+                  "value": {
+                    "email": "user@example.com",
+                    "password": "secret123"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid payload.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid email or password.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "invalidCredentials": {
+                    "value": {
+                      "message": "Invalid email or password"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notes": {
+      "get": {
+        "summary": "List accessible notes",
+        "description": "Returns notes owned by the authenticated user or shared with the authenticated user. Pinned notes are listed first, then latest updated notes.",
+        "tags": [
+          "Notes"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Page number."
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            },
+            "description": "Number of notes per page."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated notes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedNotesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, invalid, or expired token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a note",
+        "description": "Creates a new note owned by the authenticated user.",
+        "tags": [
+          "Notes"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteCreateRequest"
+              },
+              "examples": {
+                "valid": {
+                  "value": {
+                    "title": "Meeting notes",
+                    "content": "Discuss launch checklist and owner assignments."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Note created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Note"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid payload.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notes/{id}": {
+      "get": {
+        "summary": "Get a note by ID",
+        "description": "Returns a note if the authenticated user owns it or it has been shared with them.",
+        "tags": [
+          "Notes"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Note ID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Note found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Note"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "User is not authorized to access the note.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Note does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update a note",
+        "description": "Updates the title and/or content of a note. Only the owner can update a note.",
+        "tags": [
+          "Notes"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Note ID."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteUpdateRequest"
+              },
+              "examples": {
+                "updateTitle": {
+                  "value": {
+                    "title": "Updated title"
+                  }
+                },
+                "updateBoth": {
+                  "value": {
+                    "title": "Updated title",
+                    "content": "Updated content."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Note updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Note"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid payload.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "User is not the note owner.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Note does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a note",
+        "description": "Deletes a note. Only the owner can delete a note.",
+        "tags": [
+          "Notes"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Note ID."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Note deleted successfully."
+          },
+          "401": {
+            "description": "Unauthorized.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "User is not the note owner.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Note does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notes/{id}/share": {
+      "post": {
+        "summary": "Share a note",
+        "description": "Shares a note with another registered user by email. Only the owner can share a note.",
+        "tags": [
+          "Notes"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Note ID."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShareNoteRequest"
+              },
+              "examples": {
+                "valid": {
+                  "value": {
+                    "share_with_email": "teammate@example.com"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Note shared successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                },
+                "examples": {
+                  "success": {
+                    "value": {
+                      "message": "Note shared successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid share request, sharing with self, or duplicate share.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "User is not the note owner.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Note or recipient user not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notes/{id}/pin": {
+      "patch": {
+        "summary": "Toggle note pinning",
+        "description": "Toggles the is_pinned flag for a note. Only the owner can pin or unpin a note.",
+        "tags": [
+          "Notes"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Note ID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated pin state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "content": {
+                      "type": "string"
+                    },
+                    "is_pinned": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "examples": {
+                  "pinned": {
+                    "value": {
+                      "id": "c1d3c0d9-0f44-45e5-9ab7-c1b5cce74db5",
+                      "title": "Meeting notes",
+                      "content": "Discuss launch checklist.",
+                      "is_pinned": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "User is not the note owner.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Note does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/search": {
+      "get": {
+        "summary": "Search accessible notes",
+        "description": "Performs a case-insensitive search across title and content for notes owned by or shared with the authenticated user.",
+        "tags": [
+          "Search"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Search keyword.",
+            "example": "launch"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching notes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "notes": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Note"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or invalid search query.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "summary": "Health check",
+        "description": "Confirms the Notes API is running.",
+        "tags": [
+          "Health"
+        ],
+        "responses": {
+          "200": {
+            "description": "API is healthy.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Notes API running"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/openapi.json": {
+      "get": {
+        "summary": "Raw OpenAPI specification",
+        "description": "Returns the generated OpenAPI 3.0 JSON document.",
+        "tags": [
+          "Health"
+        ],
+        "responses": {
+          "200": {
+            "description": "OpenAPI JSON document.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
