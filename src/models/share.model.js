@@ -5,7 +5,7 @@ const createNoteShare = async ({ noteId, sharedWithUserId }) => {
     `INSERT INTO note_shares (note_id, shared_with_user_id)
      VALUES ($1, $2)
      ON CONFLICT (note_id, shared_with_user_id) DO NOTHING
-     RETURNING note_id, shared_with_user_id, created_at`,
+     RETURNING note_id, shared_with_user_id`,
     [noteId, sharedWithUserId]
   );
 
@@ -14,7 +14,7 @@ const createNoteShare = async ({ noteId, sharedWithUserId }) => {
 
 const findNoteShare = async ({ noteId, sharedWithUserId }) => {
   const result = await pool.query(
-    `SELECT note_id, shared_with_user_id, created_at
+    `SELECT note_id, shared_with_user_id
      FROM note_shares
      WHERE note_id = $1 AND shared_with_user_id = $2`,
     [noteId, sharedWithUserId]

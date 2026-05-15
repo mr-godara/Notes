@@ -261,7 +261,14 @@ const Dashboard = ({ searchTerm }) => {
         isOpen={Boolean(sharingNote)}
         isSharing={shareMutation.isPending}
         onClose={() => setSharingNote(null)}
-        onSubmit={(email) => shareMutation.mutateAsync({ id: sharingNote.id, email })}
+        onSubmit={async (email) => {
+          try {
+            await shareMutation.mutateAsync({ id: sharingNote.id, email });
+            return true;
+          } catch (error) {
+            return false;
+          }
+        }}
       />
     </div>
   );

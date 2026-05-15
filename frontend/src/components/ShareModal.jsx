@@ -24,8 +24,11 @@ const ShareModal = ({ note, isOpen, isSharing, onClose, onSubmit }) => {
   }
 
   const submit = async (values) => {
-    await onSubmit(values.email);
-    reset();
+    const shared = await onSubmit(values.email);
+
+    if (shared) {
+      reset();
+    }
   };
 
   return (
